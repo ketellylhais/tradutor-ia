@@ -1,33 +1,68 @@
-//fetch / ferramenta do js para entrar em contato com um servidor
-//async & await, usamos await para a função esperar pela resposta e usamos async para avisar a função que quando executada ela terá que parar por um momento
-//json converte para um formato legivel
+//fetch Função nativa do JavaScript para fazer requisições HTTP (GET, POST, etc.) a servidores e APIs.
+//async & await:
+//async — declara que a função é assíncrona (pode ter pausas)
+//await — pausa a execução da função até que a Promise seja resolvida
+//.json() — converte resposta em objeto JavaScript
 
 let inputTexto = document.querySelector(".input-texto")
 let traducaoTexto = document.querySelector(".traducao")
 let idioma = document.querySelector(".idioma")
 
-async function traduzir(){
+async function traduzir() {
     if (!inputTexto.value.trim()) {
         traducaoTexto.textContent = "Digite algo para traduzir"
         return
     }
-    let endereco = "https://api.mymemory.translated.net/get?q="
-    + inputTexto.value
-    + "&langpair=pt-BR|"
-    + idioma.value
 
-    let resposta = await fetch(endereco)
-    let dados = await resposta.json()
+    traducaoTexto.textContent = "Traduzindo..."
+    
+    try {
+         //monta o endereço da API
+        let endereco = "https://api.mymemory.translated.net/get?q="
+            + encodeURIComponent(inputTexto.value)
+            + "&langpair=pt-BR|"
+            + idioma.value
 
-    traducaoTexto.textContent = dados.responseData.translatedText  
+        //faz a requisição e guarda a resposta
+        let resposta = await fetch(endereco)
+
+        //verifica se a requisição deu certo
+        if (!resposta.ok) {
+            throw new Error("Erro na requisição")
+        }
+
+        //converte a resposta em JSON (objeto JavaScript)
+        //é importante converter para poder acessar os dados
+        let dados = await resposta.json()
+
+        //verifica se a API retornou tradução válida
+        //200 = sucesso
+        //400 = erro do cliente
+        //404 = não encontrado
+        //500 = erro do servidor
+        if (dados.responseStatus === 200 && dados.responseData.translatedText) {
+            traducaoTexto.textContent = dados.responseData.translatedText
+        } else {
+            traducaoTexto.textContent = "Não foi possível traduzir o texto."
+        }
+    } catch(erro) {
+        traducaoTexto.textContent = "Erro de conexão. Verifique sua internet."
+        console.error("Erro:", erro)
+    }
+
 }
 
 
 function ouvirVoz() {
+    // verifica se o navegador suporta
+    if (!window.webkitSpeechRecognition) {
+        alert("Seu navegador não suporta reconhecimento de voz. Use o Chrome no desktop.")
+        return
+    }
+
     //ferramenta de transcrição de audio
     let voz = window.webkitSpeechRecognition
 
-    //instacia
     let reconhecimento = new voz()
 
     //configura a ferramenta
@@ -36,11 +71,11 @@ function ouvirVoz() {
     //avisa o resultado
     reconhecimento.onresult = (evento) => {
         let transcricao = evento.results[0][0].transcript
-
         inputTexto.value = transcricao
-
         traduzir()
     }
-
+    reconhecimento.onerror = () => {
+        alert("Não consegui ouvir. Tente novamente.")
+    }
     reconhecimento.start()
 }
